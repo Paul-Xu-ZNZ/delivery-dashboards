@@ -158,12 +158,16 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ===== Tabs =====
-  var DATA_VERSION = 2; // 6.22-6.28 新增第三周Tab
+  var DATA_VERSION = 3; // rename 本周数据→上周, add 6.22-6.28
   function loadTabs() {
     try {
       var saved = localStorage.getItem(TABS_KEY);
       if (saved) {
         tabs = JSON.parse(saved);
+        // Migrate: rename old '本周数据' tab
+        tabs.forEach(function(t) {
+          if (t.name === '本周数据') { t.name = '6.15-6.21 上周'; }
+        });
         // Migrate: add new week tab if not present
         var weekTabName = '6.22-6.28 本周';
         var hasWeekTab = tabs.some(function(t) { return t.name === weekTabName; });
@@ -174,8 +178,8 @@ document.addEventListener('DOMContentLoaded', function() {
             data: JSON.parse(JSON.stringify(DEFAULT_DATA_WEEK)),
             isEmpty: false
           });
-          saveTabs();
         }
+        saveTabs();
       } else {
         initDefaultTabs();
       }
@@ -196,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
       isEmpty: false
     }, {
       id: 'tab_' + (Date.now() + 1),
-      name: '本周数据',
+      name: '6.15-6.21 上周',
       data: JSON.parse(JSON.stringify(DEFAULT_DATA_WEEK)),
       isEmpty: false
     }, {
