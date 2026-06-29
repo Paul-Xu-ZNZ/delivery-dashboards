@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>王丹娜数据导出平台</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+.login-box{background:#fff;border-radius:16px;padding:48px 40px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center}
+.login-box h1{font-size:22px;color:#333;margin-bottom:8px}
+.login-box p{color:#999;font-size:14px;margin-bottom:32px}
+.login-box input{width:100%;padding:12px 16px;border:1px solid #ddd;border-radius:8px;font-size:15px;margin-bottom:20px;outline:none;transition:border .2s}
+.login-box input:focus{border-color:#667eea}
+.login-box button{width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;transition:opacity .2s}
+.login-box button:hover{opacity:.9}
+.login-error{color:#f5222d;font-size:13px;margin-top:12px;display:none}
+#app{display:none}
+.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.header h1{font-size:20px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:16px}
+.header-right span{font-size:14px;opacity:.85}
+.header-right button{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;transition:background .2s}
+.header-right button:hover{background:rgba(255,255,255,.35)}
+.tabs-bar{background:#fff;padding:0 32px;display:flex;align-items:center;border-bottom:1px solid #e8e8e8;gap:0;overflow-x:auto}
+.tab-btn{padding:14px 24px;font-size:15px;color:#666;cursor:pointer;border:none;background:none;position:relative;transition:color .2s;white-space:nowrap}
+.tab-btn:hover{color:#667eea}
+.tab-btn.active{color:#667eea;font-weight:600}
+.tab-btn.active::after{content:'';position:absolute;bottom:0;left:16px;right:16px;height:3px;background:#667eea;border-radius:3px 3px 0 0}
+.add-tab-btn{padding:14px 16px;font-size:18px;color:#999;cursor:pointer;border:none;background:none;transition:color .2s;flex-shrink:0}
+.add-tab-btn:hover{color:#667eea}
+.tab-content{display:none;padding:24px 32px}
+.tab-content.active{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:transform .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.stat-card .label{font-size:13px;color:#999;margin-bottom:8px}
+.stat-card .value{font-size:28px;font-weight:700}
+.stat-card .sub{font-size:12px;color:#999;margin-top:4px}
+.stat-card.blue .value{color:#667eea}
+.stat-card.green .value{color:#52c41a}
+.stat-card.orange .value{color:#fa8c16}
+.stat-card.purple .value{color:#722ed1}
+.stat-card.cyan .value{color:#13c2c2}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.toolbar-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.toolbar-right{display:flex;align-items:center;gap:12px}
+.search-box{padding:8px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;width:220px;outline:none;transition:border .2s}
+.search-box:focus{border-color:#667eea}
+.filter-select{padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;background:#fff}
+.btn{padding:8px 18px;border:none;border-radius:8px;font-size:14px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-success{background:#52c41a;color:#fff}
+.btn-success:hover{background:#73d13d}
+.btn-outline{background:#fff;color:#666;border:1px solid #ddd}
+.btn-outline:hover{border-color:#667eea;color:#667eea}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+.chart-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.chart-card h3{font-size:15px;color:#333;margin-bottom:16px}
+.chart-container{position:relative;height:280px}
+.table-wrapper{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:#fafafa}
+th{padding:12px 16px;text-align:left;font-size:13px;color:#666;font-weight:600;border-bottom:1px solid #e8e8e8;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:#667eea}
+th .sort-icon{margin-left:4px;font-size:11px}
+td{padding:11px 16px;font-size:14px;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#f8f9ff}
+tr:last-child td{border-bottom:none}
+.dept-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;background:#f0f5ff;color:#667eea}
+.rank-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;background:#fff7e6;color:#fa8c16}
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;background:#fff;border-radius:0 0 12px 12px}
+.pagination button{padding:6px 12px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s}
+.pagination button:hover:not(:disabled){border-color:#667eea;color:#667eea}
+.pagination button.active{background:#667eea;color:#fff;border-color:#667eea}
+.pagination button:disabled{opacity:.4;cursor:not-allowed}
+.pagination .info{font-size:13px;color:#999;margin:0 8px}
+.empty-tab{text-align:center;padding:80px 20px;color:#bbb}
+.empty-tab .icon{font-size:48px;margin-bottom:16px}
+.empty-tab p{font-size:15px}
+@media(max-width:900px){
+.charts-grid{grid-template-columns:1fr}
+.stats-grid{grid-template-columns:repeat(2,1fr)}
+.header{padding:0 16px}
+.tab-content{padding:16px}
+.tabs-bar{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🔒 王丹娜数据平台</h1>
+    <p>请输入访问密码</p>
+    <input type="password" id="pwd-input" placeholder="请输入密码">
+    <button onclick="doLogin()">进入平台</button>
+    <div class="login-error" id="login-err">密码错误，请重新输入</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="header">
+    <h1>📊 王丹娜数据导出平台</h1>
+    <div class="header-right">
+      <span>欢迎，王丹娜</span>
+      <button onclick="doLogout()">退出登录</button>
+    </div>
+  </div>
+  <div class="tabs-bar" id="tabs-bar"></div>
+  <div id="tab-contents"></div>
+</div>
+
+<script defer>
+document.addEventListener('DOMContentLoaded', function() {
+
+  const DEFAULT_DATA = JSON.parse(document.getElementById('default-data').textContent);
+  const DEFAULT_DATA_WEEK = JSON.parse(document.getElementById('default-data-week').textContent);
+
+  const TABS_KEY = 'wdn_tabs_v4';
+  const PAGE_SIZE = 20;
+  var tabs = [];
+  var activeTabId = '';
+  var chartInstances = {};
+  var currentPage = {};
+  var sortState = {};
+  var STATS_POSITION_FILTER = '留学文书导师'; // 统计时只统计文案岗位，避免售后+文案双重计数
+  function getStatsData(data) { return data.filter(function(r) { return r['岗位'] === STATS_POSITION_FILTER; }); }
+
+  // ===== Auth =====
+  window.doLogin = function() {
+    var pwd = document.getElementById('pwd-input').value;
+    if (pwd === 'wdn20100315') {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadTabs();
+    } else {
+      document.getElementById('login-err').style.display = 'block';
+    }
+  };
+
+  (function(){
+    var el = document.getElementById('pwd-input');
+    if (el) {
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') window.doLogin();
+      });
+      setTimeout(function(){ el.focus(); }, 300);
+    }
+  })();
+
+  window.doLogout = function() {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('pwd-input').value = '';
+  };
+
+  // ===== Tabs =====
+  var DATA_VERSION = 2; // 6.22-6.28 新增第三周Tab
+  function loadTabs() {
+    try {
+      var saved = localStorage.getItem(TABS_KEY);
+      if (saved) {
+        tabs = JSON.parse(saved);
+        // Migrate: add new week tab if not present
+        var weekTabName = '6.22-6.28 本周';
+        var hasWeekTab = tabs.some(function(t) { return t.name === weekTabName; });
+        if (!hasWeekTab) {
+          tabs.push({
+            id: 'tab_' + Date.now(),
+            name: weekTabName,
+            data: JSON.parse(JSON.stringify(DEFAULT_DATA_WEEK)),
+            isEmpty: false
+          });
+          saveTabs();
+        }
+      } else {
+        initDefaultTabs();
+      }
+    } catch(e) {
+      initDefaultTabs();
+    }
+    if (!tabs.length) initDefaultTabs();
+    activeTabId = tabs[0].id;
+    renderTabs();
+    renderActiveContent();
+  }
+
+  function initDefaultTabs() {
+    tabs = [{
+      id: 'tab_' + Date.now(),
+      name: '客户数据看板',
+      data: JSON.parse(JSON.stringify(DEFAULT_DATA)),
+      isEmpty: false
+    }, {
+      id: 'tab_' + (Date.now() + 1),
+      name: '本周数据',
+      data: JSON.parse(JSON.stringify(DEFAULT_DATA_WEEK)),
+      isEmpty: false
+    }, {
+      id: 'tab_' + (Date.now() + 2),
+      name: '6.22-6.28 本周',
+      data: JSON.parse(JSON.stringify(DEFAULT_DATA_WEEK)),
+      isEmpty: false
+    }];
+    saveTabs();
+  }
+
+  function saveTabs() {
+    localStorage.setItem(TABS_KEY, JSON.stringify(tabs));
+  }
+
+  function renderTabs() {
+    var bar = document.getElementById('tabs-bar');
+    var html = '';
+    tabs.forEach(function(t) {
+      var active = t.id === activeTabId ? ' active' : '';
+      html += '<button class="tab-btn' + active + '" data-tabid="' + escAttr(t.id) + '">' + escHtml(t.name) + '</button>';
+    });
+    html += '<button class="add-tab-btn" title="新增Tab">＋</button>';
+    bar.innerHTML = html;
+
+    bar.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        switchTab(this.getAttribute('data-tabid'));
+      });
+    });
+    bar.querySelector('.add-tab-btn').addEventListener('click', addNewTab);
+  }
+
+  window.switchTab = function(id) {
+    activeTabId = id;
+    renderTabs();
+    renderActiveContent();
+  };
+
+  function addNewTab() {
+    var name = prompt('请输入新Tab名称：', '新数据看板');
+    if (!name) return;
+    var id = 'tab_' + Date.now();
+    tabs.push({ id: id, name: name, data: [], isEmpty: true });
+    saveTabs();
+    activeTabId = id;
+    renderTabs();
+    renderActiveContent();
+  }
+
+  // ===== Render Content =====
+  function renderActiveContent() {
+    var container = document.getElementById('tab-contents');
+    var tab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (!tab) return;
+
+    if (tab.isEmpty || !tab.data || !tab.data.length) {
+      container.innerHTML = '<div class="tab-content active"><div class="empty-tab"><div class="icon">📭</div><p>暂无数据</p><p style="margin-top:8px;font-size:13px;">点击"上传新数据"按钮导入Excel文件</p></div></div>';
+      return;
+    }
+
+    var statsHtml = buildStatsCards(tab.data);
+    var chartsHtml = buildChartsSection(tab.data, tab.id);
+    var toolbarHtml = buildToolbar(tab.id);
+    var tableHtml = buildTableArea(tab);
+    var paginationHtml = buildPaginationArea(tab);
+
+    container.innerHTML = '<div class="tab-content active">' + statsHtml + chartsHtml + toolbarHtml + tableHtml + paginationHtml + '</div>';
+
+    bindEvents(tab.id);
+    setTimeout(function() { initCharts(tab.data, tab.id); }, 80);
+  }
+
+  // ===== Stats =====
+  function buildStatsCards(data) {
+    var statsData = getStatsData(data);
+    var total = statsData.length;
+    var deptMap = {};
+    statsData.forEach(function(r) { deptMap[r.部门] = (deptMap[r.部门]||0) + 1; });
+    var deptCount = Object.keys(deptMap).length;
+    var sumWeek = 0, sumMonth = 0, sum27 = 0, sumValid27 = 0;
+    statsData.forEach(function(r) {
+      sumWeek += (r.本周新增客户数 || 0);
+      sumMonth += (r.本月新增客户数 || 0);
+      sum27 += (r['27客户数量'] || 0);
+      sumValid27 += (r['27有效客户数量'] || 0);
+    });
+    var avgWeek = total ? (sumWeek/total).toFixed(1) : 0;
+    var avgMonth = total ? (sumMonth/total).toFixed(1) : 0;
+    var rate = sum27 ? (sumValid27/sum27*100).toFixed(1) + '%' : '-';
+
+    return '<div class="stats-grid">' +
+      '<div class="stat-card blue"><div class="label">总人数</div><div class="value">' + total + '</div><div class="sub">' + deptCount + ' 个部门</div></div>' +
+      '<div class="stat-card green"><div class="label">本周新增客户（合计）</div><div class="value">' + sumWeek + '</div><div class="sub">人均 ' + avgWeek + '</div></div>' +
+      '<div class="stat-card orange"><div class="label">本月新增客户（合计）</div><div class="value">' + sumMonth + '</div><div class="sub">人均 ' + avgMonth + '</div></div>' +
+      '<div class="stat-card purple"><div class="label">27有效客户（合计）</div><div class="value">' + sumValid27 + '</div><div class="sub">总客户数 ' + sum27 + '</div></div>' +
+      '<div class="stat-card cyan"><div class="label">有效率</div><div class="value">' + rate + '</div><div class="sub">有效/总客户</div></div>' +
+    '</div>';
+  }
+
+  // ===== Charts =====
+  function buildChartsSection(data, tabId) {
+    return '<div class="charts-grid">' +
+      '<div class="chart-card"><h3>📊 各部门人数分布</h3><div class="chart-container"><canvas id="chart-dept-' + tabId + '"></canvas></div></div>' +
+      '<div class="chart-card"><h3>📈 本周新增客户分布</h3><div class="chart-container"><canvas id="chart-week-' + tabId + '"></canvas></div></div>' +
+    '</div>';
+  }
+
+  function initCharts(data, tabId) {
+    if (typeof Chart === 'undefined') return;
+    if (chartInstances[tabId]) {
+      chartInstances[tabId].forEach(function(c) { try { c.destroy(); } catch(e) {} });
+    }
+    chartInstances[tabId] = [];
+
+    var statsData = getStatsData(data);
+    var deptMap = {};
+    statsData.forEach(function(r) { deptMap[r.部门] = (deptMap[r.部门]||0) + 1; });
+    var deptLabels = Object.keys(deptMap);
+    var deptDataArr = deptLabels.map(function(d) { return deptMap[d]; });
+    var colors = ['#667eea','#764ba2','#f5222d','#fa8c16','#52c41a','#13c2c2','#eb2f96','#722ed1','#2f54eb','#a0d911'];
+
+    var ctx1 = document.getElementById('chart-dept-' + tabId);
+    if (ctx1) {
+      chartInstances[tabId].push(new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: deptLabels,
+          datasets: [{ data: deptDataArr, backgroundColor: colors.slice(0, deptLabels.length), borderRadius: 6, maxBarThickness: 40 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { stepSize: 1 } },
+            x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 11 } } }
+          }
+        }
+      }));
+    }
+
+    var buckets = {'0': 0, '1-2': 0, '3-4': 0, '5-6': 0, '7+': 0};
+    statsData.forEach(function(r) {
+      var v = r.本周新增客户数 || 0;
+      if (v === 0) buckets['0']++;
+      else if (v <= 2) buckets['1-2']++;
+      else if (v <= 4) buckets['3-4']++;
+      else if (v <= 6) buckets['5-6']++;
+      else buckets['7+']++;
+    });
+
+    var ctx2 = document.getElementById('chart-week-' + tabId);
+    if (ctx2) {
+      chartInstances[tabId].push(new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(buckets),
+          datasets: [{ data: Object.values(buckets), backgroundColor: ['#bbb','#fa8c16','#667eea','#52c41a','#f5222d'], borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 13 } } } }
+        }
+      }));
+    }
+  }
+
+  // ===== Toolbar =====
+  function buildToolbar(tabId) {
+    var tab = tabs.find(function(t) { return t.id === tabId; });
+    var depts = [];
+    tab.data.forEach(function(r) {
+      if (depts.indexOf(r.部门) === -1) depts.push(r.部门);
+    });
+    var deptsHtml = '<option value="">全部部门</option>';
+    depts.forEach(function(d) {
+      deptsHtml += '<option value="' + escAttr(d) + '">' + escHtml(d) + '</option>';
+    });
+
+    return '<div class="toolbar">' +
+      '<div class="toolbar-left">' +
+        '<input class="search-box" id="search-' + tabId + '" placeholder="🔍 搜索姓名/部门...">' +
+        '<select class="filter-select" id="filter-dept-' + tabId + '">' + deptsHtml + '</select>' +
+      '</div>' +
+      '<div class="toolbar-right">' +
+        '<button class="btn btn-success" id="btn-export-' + tabId + '">📥 导出 Excel</button>' +
+        '<button class="btn btn-outline" id="btn-upload-' + tabId + '">📂 上传新数据</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function bindEvents(tabId) {
+    var searchEl = document.getElementById('search-' + tabId);
+    if (searchEl) {
+      searchEl.addEventListener('input', function() { handleSearch(tabId); });
+    }
+    var filterEl = document.getElementById('filter-dept-' + tabId);
+    if (filterEl) {
+      filterEl.addEventListener('change', function() { handleFilter(tabId); });
+    }
+    var btnExport = document.getElementById('btn-export-' + tabId);
+    if (btnExport) {
+      btnExport.addEventListener('click', function() { exportExcel(tabId); });
+    }
+    var btnUpload = document.getElementById('btn-upload-' + tabId);
+    if (btnUpload) {
+      btnUpload.addEventListener('click', function() { uploadData(tabId); });
+    }
+    // Sort headers
+    document.querySelectorAll('#tab-contents th[data-sort]').forEach(function(th) {
+      th.addEventListener('click', function() {
+        handleSort(tabId, this.getAttribute('data-sort'));
+      });
+    });
+    // Pagination
+    document.querySelectorAll('#tab-contents .pagination button[data-page]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var p = parseInt(this.getAttribute('data-page'));
+        goPage(tabId, p);
+      });
+    });
+  }
+
+  // ===== Table =====
+  function getFilteredData(tabId) {
+    var tab = tabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return [];
+    var data = tab.data.slice();
+
+    var searchEl = document.getElementById('search-' + tabId);
+    var keyword = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    if (keyword) {
+      data = data.filter(function(r) {
+        return (r.姓名||'').toLowerCase().indexOf(keyword) > -1 || (r.部门||'').toLowerCase().indexOf(keyword) > -1;
+      });
+    }
+
+    var deptEl = document.getElementById('filter-dept-' + tabId);
+    var deptVal = deptEl ? deptEl.value : '';
+    if (deptVal) {
+      data = data.filter(function(r) { return r.部门 === deptVal; });
+    }
+
+    if (sortState[tabId]) {
+      var col = sortState[tabId].col;
+      var dir = sortState[tabId].dir;
+      data.sort(function(a, b) {
+        var va = a[col], vb = b[col];
+        if (typeof va === 'number' && typeof vb === 'number') return dir === 'asc' ? va - vb : vb - va;
+        va = String(va||''); vb = String(vb||'');
+        return dir === 'asc' ? va.localeCompare(vb, 'zh') : vb.localeCompare(va, 'zh');
+      });
+    }
+    return data;
+  }
+
+  function buildTableArea(tab) {
+    var tabId = tab.id;
+    if (!currentPage[tabId]) currentPage[tabId] = 1;
+    var filtered = getFilteredData(tabId);
+    var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage[tabId] > totalPages) currentPage[tabId] = totalPages;
+
+    var start = (currentPage[tabId] - 1) * PAGE_SIZE;
+    var pageData = filtered.slice(start, start + PAGE_SIZE);
+
+    var cols = ['姓名','职级','岗位','部门','本周新增客户数','本月新增客户数','27客户数量','27有效客户数量'];
+    var colLabels = ['姓名','职级','岗位','部门','本周新增','本月新增','27客户数','27有效'];
+
+    var thHtml = '';
+    cols.forEach(function(c, i) {
+      var icon = '⇅';
+      if (sortState[tabId] && sortState[tabId].col === c) {
+        icon = sortState[tabId].dir === 'asc' ? '↑' : '↓';
+      }
+      thHtml += '<th data-sort="' + c + '">' + colLabels[i] + '<span class="sort-icon">' + icon + '</span></th>';
+    });
+
+    var tbHtml = '';
+    pageData.forEach(function(r) {
+      tbHtml += '<tr>' +
+        '<td>' + escHtml(r.姓名||'') + '</td>' +
+        '<td><span class="rank-tag">' + escHtml(String(r.职级||'-')) + '</span></td>' +
+        '<td>' + escHtml(r.岗位||'') + '</td>' +
+        '<td><span class="dept-tag">' + escHtml(r.部门||'') + '</span></td>' +
+        '<td>' + (r.本周新增客户数 != null ? r.本周新增客户数 : '-') + '</td>' +
+        '<td>' + (r.本月新增客户数 != null ? r.本月新增客户数 : '-') + '</td>' +
+        '<td>' + (r['27客户数量'] != null ? r['27客户数量'] : '-') + '</td>' +
+        '<td>' + (r['27有效客户数量'] != null ? r['27有效客户数量'] : '-') + '</td>' +
+      '</tr>';
+    });
+
+    if (!tbHtml) tbHtml = '<tr><td colspan="' + cols.length + '" style="text-align:center;color:#bbb;padding:40px;">暂无匹配数据</td></tr>';
+
+    var info = '显示 ' + (start + 1) + '-' + Math.min(start + PAGE_SIZE, filtered.length) + ' 条，共 ' + filtered.length + ' 条';
+
+    return '<div class="table-wrapper" id="table-area-' + tabId + '">' +
+      '<table><thead><tr>' + thHtml + '</tr></thead><tbody>' + tbHtml + '</tbody></table>' +
+      '<div style="padding:8px 16px;font-size:12px;color:#999;background:#fafafa;border-top:1px solid #f0f0f0;">' + info + '</div>' +
+    '</div>';
+  }
+
+  function buildPaginationArea(tab) {
+    var tabId = tab.id;
+    var filtered = getFilteredData(tabId);
+    var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    var page = currentPage[tabId] || 1;
+
+    var html = '<div class="pagination" id="pagination-' + tabId + '">';
+    html += '<button ' + (page <= 1 ? 'disabled' : '') + ' data-page="' + (page - 1) + '">‹ 上一页</button>';
+
+    var startP = Math.max(1, page - 2);
+    var endP = Math.min(totalPages, page + 2);
+    for (var i = startP; i <= endP; i++) {
+      html += '<button class="' + (i === page ? 'active' : '') + '" data-page="' + i + '">' + i + '</button>';
+    }
+    html += '<button ' + (page >= totalPages ? 'disabled' : '') + ' data-page="' + (page + 1) + '">下一页 ›</button>';
+    html += '<span class="info">第 ' + page + '/' + totalPages + ' 页</span>';
+    html += '</div>';
+    return html;
+  }
+
+  // ===== Handlers =====
+  window.handleSearch = function(tabId) {
+    currentPage[tabId] = 1;
+    refreshTable(tabId);
+  };
+
+  window.handleFilter = function(tabId) {
+    currentPage[tabId] = 1;
+    refreshTable(tabId);
+  };
+
+  window.handleSort = function(tabId, col) {
+    if (!sortState[tabId] || sortState[tabId].col !== col) {
+      sortState[tabId] = { col: col, dir: 'asc' };
+    } else {
+      sortState[tabId].dir = sortState[tabId].dir === 'asc' ? 'desc' : 'asc';
+    }
+    currentPage[tabId] = 1;
+    refreshTable(tabId);
+  };
+
+  function goPage(tabId, p) {
+    var filtered = getFilteredData(tabId);
+    var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (p < 1 || p > totalPages) return;
+    currentPage[tabId] = p;
+    refreshTable(tabId);
+  }
+
+  function refreshTable(tabId) {
+    var tab = tabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    var area = document.getElementById('table-area-' + tabId);
+    var pag = document.getElementById('pagination-' + tabId);
+    if (area) area.outerHTML = buildTableArea(tab);
+    if (pag) pag.outerHTML = buildPaginationArea(tab);
+    bindEvents(tabId);
+  }
+
+  // ===== Export Excel =====
+  window.exportExcel = function(tabId) {
+    if (typeof XLSX === 'undefined') { alert('XLSX 库尚未加载，请稍后再试'); return; }
+    var tab = tabs.find(function(t) { return t.id === tabId; });
+    if (!tab || !tab.data.length) { alert('暂无数据可导出'); return; }
+
+    var exportData = getFilteredData(tabId);
+    var headers = [['姓名','职级','岗位','部门','本周新增客户数','本月新增客户数','27客户数量','27有效客户数量']];
+    var rows = exportData.map(function(r) {
+      return [r.姓名, r.职级, r.岗位, r.部门, r.本周新增客户数, r.本月新增客户数, r['27客户数量'], r['27有效客户数量']];
+    });
+    var wsData = headers.concat(rows);
+
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{wch:12},{wch:6},{wch:16},{wch:14},{wch:14},{wch:14},{wch:12},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws, '数据');
+    XLSX.writeFile(wb, tab.name + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  };
+
+  // ===== Upload Data =====
+  window.uploadData = function(tabId) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          if (typeof XLSX === 'undefined') { alert('XLSX 库尚未加载'); return; }
+          var wb = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          var json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          if (!json.length) { alert('文件中没有找到数据'); return; }
+
+          var keyMap = {};
+          Object.keys(json[0]).forEach(function(k) {
+            var kl = k.replace(/\s/g, '');
+            if (kl.indexOf('姓名') > -1) keyMap['姓名'] = k;
+            else if (kl.indexOf('职级') > -1) keyMap['职级'] = k;
+            else if (kl.indexOf('岗位') > -1) keyMap['岗位'] = k;
+            else if (kl.indexOf('部门') > -1) keyMap['部门'] = k;
+            else if (kl.indexOf('本周') > -1) keyMap['本周新增客户数'] = k;
+            else if (kl.indexOf('本月') > -1) keyMap['本月新增客户数'] = k;
+            else if (kl.indexOf('有效') > -1 || (kl.indexOf('27') > -1 && kl.indexOf('有效') > -1)) keyMap['27有效客户数量'] = k;
+            else if (kl.indexOf('27') > -1) keyMap['27客户数量'] = k;
+          });
+
+          var normalized = json.map(function(row) {
+            var obj = {};
+            ['姓名','职级','岗位','部门','本周新增客户数','本月新增客户数','27客户数量','27有效客户数量'].forEach(function(nk) {
+              obj[nk] = row[keyMap[nk]] != null ? row[keyMap[nk]] : '';
+              if (obj[nk] !== '' && !isNaN(obj[nk]) && typeof obj[nk] !== 'object') {
+                var n = Number(obj[nk]);
+                if (!isNaN(n)) obj[nk] = n;
+              }
+            });
+            return obj;
+          });
+
+          var tab = tabs.find(function(t) { return t.id === tabId; });
+          tab.data = normalized;
+          tab.isEmpty = false;
+          saveTabs();
+          alert('成功导入 ' + normalized.length + ' 条数据');
+          renderActiveContent();
+        } catch(err) {
+          alert('文件解析失败：' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    input.click();
+  };
+
+  // ===== Helpers =====
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+  function escAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+});
+</script>
+<script type="application/json" id="default-data">
+[{"姓名":"郭琳萱","职级":2,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":7,"本月新增客户数":13,"27客户数量":65,"27有效客户数量":65},{"姓名":"付佳丽","职级":2,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":7,"本月新增客户数":12,"27客户数量":61,"27有效客户数量":61},{"姓名":"张梦蝶","职级":4,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":7,"本月新增客户数":12,"27客户数量":62,"27有效客户数量":62},{"姓名":"钱晨","职级":2,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":7,"本月新增客户数":11,"27客户数量":63,"27有效客户数量":61},{"姓名":"胡灿","职级":1,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":6,"本月新增客户数":12,"27客户数量":41,"27有效客户数量":41},{"姓名":"李思冉","职级":3,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":5,"本月新增客户数":12,"27客户数量":75,"27有效客户数量":75},{"姓名":"黄微","职级":2,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":5,"本月新增客户数":10,"27客户数量":67,"27有效客户数量":67},{"姓名":"张欣悦","职级":2,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":5,"本月新增客户数":10,"27客户数量":64,"27有效客户数量":64},{"姓名":"王姣姣","职级":2,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":5,"本月新增客户数":9,"27客户数量":53,"27有效客户数量":53},{"姓名":"刘惠霖","职级":2,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":5,"本月新增客户数":11,"27客户数量":64,"27有效客户数量":64},{"姓名":"王雅楠","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":4,"本月新增客户数":6,"27客户数量":6,"27有效客户数量":6},{"姓名":"吴婷","职级":2,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":9,"27客户数量":66,"27有效客户数量":64},{"姓名":"马若楠","职级":3,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":4,"本月新增客户数":7,"27客户数量":65,"27有效客户数量":62},{"姓名":"孙仲杰","职级":2,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":4,"本月新增客户数":7,"27客户数量":54,"27有效客户数量":54},{"姓名":"吕海燕","职级":3,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":8,"27客户数量":56,"27有效客户数量":55},{"姓名":"张怡","职级":2,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":9,"27客户数量":45,"27有效客户数量":44},{"姓名":"汪琦","职级":0,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":4,"本月新增客户数":7,"27客户数量":11,"27有效客户数量":11},{"姓名":"焦镜棉","职级":2,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":8,"27客户数量":53,"27有效客户数量":53},{"姓名":"夏萱","职级":2,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":4,"本月新增客户数":8,"27客户数量":51,"27有效客户数量":51},{"姓名":"朱琨","职级":0,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":4,"本月新增客户数":4,"27客户数量":4,"27有效客户数量":4},{"姓名":"杨思畅","职级":2,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":4,"本月新增客户数":11,"27客户数量":73,"27有效客户数量":73},{"姓名":"白婧","职级":2,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":4,"本月新增客户数":8,"27客户数量":44,"27有效客户数量":43},{"姓名":"金星","职级":4,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":4,"本月新增客户数":7,"27客户数量":112,"27有效客户数量":112},{"姓名":"张秋华","职级":2,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":10,"27客户数量":69,"27有效客户数量":69},{"姓名":"胡方圆","职级":2,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":7,"27客户数量":42,"27有效客户数量":42},{"姓名":"苏晓江","职级":3,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":7,"27客户数量":21,"27有效客户数量":21},{"姓名":"李舒瑶","职级":"","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":10,"27客户数量":23,"27有效客户数量":23},{"姓名":"李雪莹","职级":1,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":11,"27客户数量":42,"27有效客户数量":42},{"姓名":"衡一凡","职级":3,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":4,"本月新增客户数":6,"27客户数量":63,"27有效客户数量":63},{"姓名":"郭悦","职级":3,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":4,"本月新增客户数":9,"27客户数量":45,"27有效客户数量":45},{"姓名":"徐雅轩","职级":0,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":5,"27客户数量":8,"27有效客户数量":8},{"姓名":"王安琪","职级":3,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":47,"27有效客户数量":47},{"姓名":"丁冰璇","职级":3,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":49,"27有效客户数量":47},{"姓名":"王慧琳","职级":1,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":8,"27客户数量":54,"27有效客户数量":52},{"姓名":"夏新芳","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":5,"27客户数量":17,"27有效客户数量":17},{"姓名":"程晓丽","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":4,"27客户数量":6,"27有效客户数量":6},{"姓名":"王希文","职级":0,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":16,"27有效客户数量":16},{"姓名":"雷爱玲","职级":0,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":11,"27有效客户数量":11},{"姓名":"徐萍","职级":5,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":8,"27客户数量":16,"27有效客户数量":16},{"姓名":"王梅","职级":2,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":58,"27有效客户数量":58},{"姓名":"张姝颖","职级":3,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":5,"27客户数量":54,"27有效客户数量":54},{"姓名":"王子怡","职级":1,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":37,"27有效客户数量":37},{"姓名":"李王琳","职级":2,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":60,"27有效客户数量":57},{"姓名":"胡清盼","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":47,"27有效客户数量":46},{"姓名":"李莹莹","职级":3,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":48,"27有效客户数量":48},{"姓名":"束雪雯","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":5,"27客户数量":7,"27有效客户数量":7},{"姓名":"徐瑄","职级":1,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":5,"27客户数量":54,"27有效客户数量":54},{"姓名":"周子诺","职级":3,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":53,"27有效客户数量":53},{"姓名":"张路瑶","职级":2,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":39,"27有效客户数量":38},{"姓名":"高雨萱","职级":3,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":56,"27有效客户数量":56},{"姓名":"苏雅雯","职级":3,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":60,"27有效客户数量":60},{"姓名":"黄芳","职级":0,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":16,"27有效客户数量":16},{"姓名":"陆羚钰","职级":2,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":9,"27客户数量":60,"27有效客户数量":60},{"姓名":"韩旭","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":5,"27客户数量":53,"27有效客户数量":53},{"姓名":"董春晓","职级":4,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":46,"27有效客户数量":46},{"姓名":"吴宇","职级":4,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":51,"27有效客户数量":50},{"姓名":"谷伟","职级":3,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":37,"27有效客户数量":37},{"姓名":"梁佳欣","职级":2,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":42,"27有效客户数量":41},{"姓名":"谭欣雨","职级":2,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":49,"27有效客户数量":48},{"姓名":"秦蕊荣","职级":0,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":6,"27有效客户数量":6},{"姓名":"宗陈岑","职级":1,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":42,"27有效客户数量":42},{"姓名":"蒋斐","职级":5,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":34,"27有效客户数量":33},{"姓名":"浦钧柏","职级":0,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":4,"27有效客户数量":4},{"姓名":"谢颖","职级":4,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":17,"27有效客户数量":17},{"姓名":"郑海淼","职级":0,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":8,"27有效客户数量":8},{"姓名":"李丽娟","职级":5,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":47,"27有效客户数量":47},{"姓名":"仓雨欣","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":2,"27客户数量":2,"27有效客户数量":2},{"姓名":"蒋沁","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":54,"27有效客户数量":54},{"姓名":"张朵熠","职级":1,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":41,"27有效客户数量":41},{"姓名":"吴江燕","职级":2,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":49,"27有效客户数量":49},{"姓名":"方慧敏","职级":0,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":5,"27有效客户数量":5},{"姓名":"韩子轶","职级":3,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":58,"27有效客户数量":58},{"姓名":"杨文静","职级":3,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":3,"27客户数量":46,"27有效客户数量":45},{"姓名":"祁棚轩","职级":2,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":44,"27有效客户数量":44},{"姓名":"张敬于","职级":2,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":52,"27有效客户数量":52},{"姓名":"于卉","职级":3,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":48,"27有效客户数量":47},{"姓名":"耿敏","职级":1,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":41,"27有效客户数量":40},{"姓名":"王瑞","职级":2,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":50,"27有效客户数量":50},{"姓名":"张蓓蕾","职级":0,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":9,"27有效客户数量":9},{"姓名":"李玮熠","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":27,"27有效客户数量":27},{"姓名":"王文倩","职级":0,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":4,"27有效客户数量":4},{"姓名":"王楠楠","职级":2,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":51,"27有效客户数量":50},{"姓名":"胡心伟","职级":2,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":34,"27有效客户数量":33},{"姓名":"王浩","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":28,"27有效客户数量":28},{"姓名":"赵孜轩","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":16,"27有效客户数量":16},{"姓名":"叶梦蕾","职级":1,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":35,"27有效客户数量":35},{"姓名":"胡磊","职级":4,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":3,"27客户数量":34,"27有效客户数量":34},{"姓名":"吕晨雨","职级":2,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":46,"27有效客户数量":46},{"姓名":"闻嘉慧","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":20,"27有效客户数量":20},{"姓名":"李心怡","职级":3,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":59,"27有效客户数量":58},{"姓名":"虞梦佳","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":56,"27有效客户数量":56},{"姓名":"王昕","职级":1,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":1,"本月新增客户数":7,"27客户数量":57,"27有效客户数量":56},{"姓名":"李乔乔","职级":4,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":3,"27客户数量":42,"27有效客户数量":42},{"姓名":"孙一荆","职级":3,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":2,"27客户数量":63,"27有效客户数量":63},{"姓名":"李聪","职级":3,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":42,"27有效客户数量":42},{"姓名":"龙思帆","职级":3,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":3,"27客户数量":29,"27有效客户数量":28},{"姓名":"徐然","职级":2,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":1,"27客户数量":44,"27有效客户数量":44},{"姓名":"孙美冬","职级":3,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":64,"27有效客户数量":64},{"姓名":"夏艺","职级":3,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":1,"27客户数量":33,"27有效客户数量":32},{"姓名":"赵佳琚","职级":2,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":48,"27有效客户数量":48},{"姓名":"顾林欣","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":7,"27有效客户数量":7},{"姓名":"胡洁洁","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":1,"27客户数量":1,"27有效客户数量":1},{"姓名":"朱钰茜","职级":3,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":29,"27有效客户数量":29},{"姓名":"刘乐怡","职级":2,"岗位":"留学申请导师","部门":"交付三部","本周新增客户数":1,"本月新增客户数":3,"27客户数量":50,"27有效客户数量":49},{"姓名":"章辰洁","职级":3,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":2,"27客户数量":54,"27有效客户数量":54},{"姓名":"于陈龙","职级":3,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":51,"27有效客户数量":51},{"姓名":"邹雨情","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":31,"27有效客户数量":31},{"姓名":"丁炜杰","职级":1,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":2,"27客户数量":18,"27有效客户数量":18},{"姓名":"王燕","职级":4,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":2,"27客户数量":42,"27有效客户数量":42},{"姓名":"王婉秋","职级":3,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":16,"27有效客户数量":16},{"姓名":"王文静","职级":4,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":53,"27有效客户数量":53},{"姓名":"陈菲菲","职级":2,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":64,"27有效客户数量":64},{"姓名":"林弋莘","职级":4,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":68,"27有效客户数量":68},{"姓名":"闻静","职级":3,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":42,"27有效客户数量":41},{"姓名":"刘伊铃","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"樊媚","职级":0,"岗位":"留学申请导师","部门":"交付七部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"顾婷婷","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":3,"27客户数量":3,"27有效客户数量":3},{"姓名":"赵辰欣","职级":0,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"鲍孟昀","职级":2,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":0,"本月新增客户数":2,"27客户数量":61,"27有效客户数量":61},{"姓名":"初晓旭","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张惠敏","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":3,"27客户数量":23,"27有效客户数量":23},{"姓名":"贡丽","职级":4,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":42,"27有效客户数量":42},{"姓名":"何玉叶","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张心怡","职级":0,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"戎辰颖","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"陈拙","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"刘欣睿","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"史义梅","职级":4,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":3,"27客户数量":102,"27有效客户数量":99},{"姓名":"贺诗文","职级":1,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":25,"27有效客户数量":25},{"姓名":"戴秀敏","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":3,"27客户数量":18,"27有效客户数量":18},{"姓名":"陈希","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"黄丽玲","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"王昕祎","职级":3,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":2,"27客户数量":10,"27有效客户数量":10},{"姓名":"顾颖","职级":2,"岗位":"留学文书导师","部门":"交付三部","本周新增客户数":0,"本月新增客户数":7,"27客户数量":31,"27有效客户数量":31},{"姓名":"李芯宇","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"苏欣","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张佳丽","职级":3,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":1,"27客户数量":29,"27有效客户数量":29},{"姓名":"乔开妍","职级":0,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"曹芃","职级":3,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":1,"27客户数量":56,"27有效客户数量":54},{"姓名":"冯韫","职级":5,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":3,"27客户数量":30,"27有效客户数量":30},{"姓名":"李馨馨","职级":2,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"李宏瑞","职级":0,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":3,"27客户数量":5,"27有效客户数量":5},{"姓名":"孙荣芝","职级":0,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张楠","职级":0,"岗位":"留学文书导师","部门":"交付七部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张子楠","职级":0,"岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张馨羽","职级":0,"岗位":"留学文书导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张静雯","职级":3,"岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":5,"27客户数量":55,"27有效客户数量":55},{"姓名":"张也","职级":1,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":23,"27有效客户数量":23},{"姓名":"胡选华","职级":3,"岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":1,"27客户数量":10,"27有效客户数量":10},{"姓名":"何香颐","职级":1,"岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":6,"27有效客户数量":6},{"姓名":"徐敏","职级":2,"岗位":"留学文书导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":2,"27客户数量":49,"27有效客户数量":49}]
+</script>
+<script type="application/json" id="default-data-week">[{"姓名":"赵孜轩","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":10,"本月新增客户数":16,"27客户数量":27,"27有效客户数量":27},{"姓名":"李玮熠","职级":"1","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":8,"本月新增客户数":13,"27客户数量":36,"27有效客户数量":35},{"姓名":"张楠","职级":"0","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":8,"本月新增客户数":8,"27客户数量":8,"27有效客户数量":8},{"姓名":"衡一凡","职级":"3","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":8,"本月新增客户数":15,"27客户数量":70,"27有效客户数量":70},{"姓名":"张惠敏","职级":"1","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":8,"本月新增客户数":12,"27客户数量":32,"27有效客户数量":32},{"姓名":"孙一荆","职级":"3","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":7,"本月新增客户数":13,"27客户数量":78,"27有效客户数量":78},{"姓名":"祁棚轩(James)","职级":"2","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":7,"本月新增客户数":14,"27客户数量":56,"27有效客户数量":56},{"姓名":"张朵熠","职级":"1","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":7,"本月新增客户数":16,"27客户数量":53,"27有效客户数量":53},{"姓名":"刘惠霖（文书已排到七月中❤️）","职级":"2","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":6,"本月新增客户数":20,"27客户数量":73,"27有效客户数量":73},{"姓名":"杨思畅","职级":"2","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":6,"本月新增客户数":18,"27客户数量":82,"27有效客户数量":82},{"姓名":"付佳丽","职级":"2","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":5,"本月新增客户数":19,"27客户数量":69,"27有效客户数量":69},{"姓名":"张路瑶","职级":"2","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":5,"本月新增客户数":13,"27客户数量":46,"27有效客户数量":45},{"姓名":"陈菲菲6.22-6.26假","职级":"2","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":5,"本月新增客户数":12,"27客户数量":70,"27有效客户数量":70},{"姓名":"雷爱玲","职级":"0","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":5,"本月新增客户数":13,"27客户数量":15,"27有效客户数量":15},{"姓名":"胡灿","职级":"1","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":5,"本月新增客户数":21,"27客户数量":50,"27有效客户数量":50},{"姓名":"王慧琳","职级":"1","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":5,"本月新增客户数":17,"27客户数量":62,"27有效客户数量":60},{"姓名":"李舒瑶 Valerie （提前批大爆炸 麻烦排单前问我一下~）","职级":"","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":5,"本月新增客户数":17,"27客户数量":30,"27有效客户数量":30},{"姓名":"韩子轶Nelson [新下单的将排至7月]","职级":"3","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":5,"本月新增客户数":13,"27客户数量":67,"27有效客户数量":67},{"姓名":"张敬于","职级":"2","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":5,"本月新增客户数":14,"27客户数量":59,"27有效客户数量":59},{"姓名":"苏晓江","职级":"3","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":4,"本月新增客户数":14,"27客户数量":28,"27有效客户数量":28},{"姓名":"张静雯","职级":"3","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":4,"本月新增客户数":10,"27客户数量":58,"27有效客户数量":57},{"姓名":"徐瑄","职级":"1","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":4,"本月新增客户数":11,"27客户数量":59,"27有效客户数量":59},{"姓名":"黄芳","职级":"0","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":4,"本月新增客户数":14,"27客户数量":23,"27有效客户数量":23},{"姓名":"鲍孟昀 (Victoria)","职级":"2","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":4,"本月新增客户数":6,"27客户数量":65,"27有效客户数量":65},{"姓名":"王昕","职级":"1","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":4,"本月新增客户数":14,"27客户数量":64,"27有效客户数量":63},{"姓名":"章辰洁","职级":"3","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":66,"27有效客户数量":66},{"姓名":"戎辰颖","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":3,"27客户数量":3,"27有效客户数量":3},{"姓名":"王文倩","职级":"0","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":9,"27客户数量":9,"27有效客户数量":9},{"姓名":"胡心伟","职级":"2","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":11,"27客户数量":40,"27有效客户数量":39},{"姓名":"王瑞","职级":"2","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":9,"27客户数量":54,"27有效客户数量":54},{"姓名":"胡清盼","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":10,"27客户数量":51,"27有效客户数量":50},{"姓名":"钱晨","职级":"2","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":16,"27客户数量":69,"27有效客户数量":67},{"姓名":"郭悦","职级":"3","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":15,"27客户数量":52,"27有效客户数量":52},{"姓名":"张子楠","职级":"0","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":6,"27客户数量":6,"27有效客户数量":6},{"姓名":"金星 （Starley）","职级":"4","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":20,"27客户数量":128,"27有效客户数量":128},{"姓名":"程晓丽","职级":"0","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":9,"27客户数量":11,"27有效客户数量":11},{"姓名":"仓雨欣","职级":"0","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":7,"27有效客户数量":7},{"姓名":"方慧敏","职级":"0","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":10,"27客户数量":10,"27有效客户数量":10},{"姓名":"谷伟","职级":"3","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":13,"27客户数量":45,"27有效客户数量":45},{"姓名":"吕海燕","职级":"3","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":3,"本月新增客户数":12,"27客户数量":60,"27有效客户数量":59},{"姓名":"谭欣雨","职级":"2","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":12,"27客户数量":55,"27有效客户数量":54},{"姓名":"虞梦佳（26下午医院","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":8,"27客户数量":59,"27有效客户数量":59},{"姓名":"陈拙","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":8,"27客户数量":8,"27有效客户数量":8},{"姓名":"孙美冬","职级":"3","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":9,"27客户数量":66,"27有效客户数量":66},{"姓名":"王子怡","职级":"1","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":12,"27客户数量":42,"27有效客户数量":42},{"姓名":"胡选华 Ivan","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":4,"27客户数量":13,"27有效客户数量":13},{"姓名":"李聪(Celia)","职级":"3","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":7,"27客户数量":47,"27有效客户数量":47},{"姓名":"郑海淼","职级":"0","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":11,"27客户数量":12,"27有效客户数量":12},{"姓名":"陆羚钰【6月已满，下单均排7月】","职级":"2","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":3,"本月新增客户数":13,"27客户数量":66,"27有效客户数量":66},{"姓名":"王姣姣","职级":"2","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":14,"27客户数量":58,"27有效客户数量":57},{"姓名":"朱琨","职级":"0","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":3,"本月新增客户数":9,"27客户数量":9,"27有效客户数量":9},{"姓名":"胡洁洁","职级":"0","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":4,"27客户数量":4,"27有效客户数量":4},{"姓名":"马若楠","职级":"3","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":11,"27客户数量":71,"27有效客户数量":68},{"姓名":"白婧","职级":"2","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":13,"27客户数量":49,"27有效客户数量":48},{"姓名":"张欣悦【6月文书已排满】","职级":"2","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":3,"本月新增客户数":16,"27客户数量":71,"27有效客户数量":71},{"姓名":"秦蕊荣","职级":"0","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":3,"本月新增客户数":10,"27客户数量":11,"27有效客户数量":11},{"姓名":"李莹莹","职级":"3","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":11,"27客户数量":52,"27有效客户数量":52},{"姓名":"胡方圆","职级":"2","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":46,"27有效客户数量":46},{"姓名":"周子诺","职级":"3","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":8,"27客户数量":56,"27有效客户数量":56},{"姓名":"王浩","职级":"1","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":33,"27有效客户数量":33},{"姓名":"焦镜棉","职级":"2","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":14,"27客户数量":60,"27有效客户数量":60},{"姓名":"李宏瑞","职级":"0","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":8,"27有效客户数量":8},{"姓名":"李雪莹","职级":"1","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":14,"27客户数量":44,"27有效客户数量":44},{"姓名":"徐然","职级":"2","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":48,"27有效客户数量":48},{"姓名":"董春晓","职级":"4","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":2,"本月新增客户数":9,"27客户数量":0,"27有效客户数量":0},{"姓名":"王婉秋","职级":"3","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":8,"27客户数量":20,"27有效客户数量":20},{"姓名":"戴秀敏","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":21,"27有效客户数量":21},{"姓名":"胡磊 Layla","职级":"4","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":37,"27有效客户数量":37},{"姓名":"苏雅雯","职级":"3","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":65,"27有效客户数量":65},{"姓名":"张梦蝶","职级":"4","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":18,"27客户数量":68,"27有效客户数量":68},{"姓名":"徐敏（6.30-7.3假）【ps下单排至7月下】","职级":"2","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":52,"27有效客户数量":52},{"姓名":"吴江燕","职级":"2","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":8,"27客户数量":52,"27有效客户数量":52},{"姓名":"顾婷婷","职级":"0","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":6,"27有效客户数量":6},{"姓名":"邹雨情","职级":"1","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":8,"27客户数量":34,"27有效客户数量":34},{"姓名":"丁冰璇","职级":"3","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":53,"27有效客户数量":51},{"姓名":"于卉（Sherry)","职级":"3","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":52,"27有效客户数量":51},{"姓名":"王燕","职级":"4","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":48,"27有效客户数量":48},{"姓名":"孙仲杰【倒计时中】","职级":"2","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":13,"27客户数量":61,"27有效客户数量":61},{"姓名":"吴婷","职级":"2","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":12,"27客户数量":69,"27有效客户数量":67},{"姓名":"浦钧柏","职级":"0","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":6,"27有效客户数量":6},{"姓名":"王梅","职级":"2","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":63,"27有效客户数量":63},{"姓名":"叶梦蕾","职级":"1","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":38,"27有效客户数量":38},{"姓名":"龙思帆（Tiffany）","职级":"3","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":33,"27有效客户数量":32},{"姓名":"张怡","职级":"2","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":2,"本月新增客户数":14,"27客户数量":51,"27有效客户数量":50},{"姓名":"王文静","职级":"4","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":6,"27客户数量":58,"27有效客户数量":57},{"姓名":"汪琦","职级":"0","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":11,"27客户数量":15,"27有效客户数量":15},{"姓名":"张馨羽","职级":"0","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":2,"本月新增客户数":3,"27客户数量":3,"27有效客户数量":3},{"姓名":"夏萱","职级":"2","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":12,"27客户数量":57,"27有效客户数量":57},{"姓名":"董春晓","职级":"4","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":9,"27客户数量":50,"27有效客户数量":50},{"姓名":"刘伊铃","职级":"0","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":2,"本月新增客户数":4,"27客户数量":4,"27有效客户数量":4},{"姓名":"吴宇","职级":"4","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":8,"27客户数量":53,"27有效客户数量":52},{"姓名":"刘乐怡","职级":"2","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":2,"本月新增客户数":7,"27客户数量":55,"27有效客户数量":54},{"姓名":"王昕祎","职级":"3","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":5,"27客户数量":14,"27有效客户数量":14},{"姓名":"顾林欣","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":10,"27客户数量":11,"27有效客户数量":11},{"姓名":"黄微","职级":"2","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":2,"本月新增客户数":16,"27客户数量":72,"27有效客户数量":72},{"姓名":"宗陈岑","职级":"1","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":45,"27有效客户数量":45},{"姓名":"耿敏","职级":"1","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":1,"本月新增客户数":10,"27客户数量":47,"27有效客户数量":46},{"姓名":"曹芃","职级":"3","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":3,"27客户数量":61,"27有效客户数量":59},{"姓名":"徐萍(Fiona)","职级":"5","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":1,"本月新增客户数":10,"27客户数量":18,"27有效客户数量":18},{"姓名":"王楠楠","职级":"2","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":9,"27客户数量":53,"27有效客户数量":52},{"姓名":"冯韫 (Carol)","职级":"5","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":32,"27有效客户数量":32},{"姓名":"贡丽","职级":"4","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":1,"27客户数量":43,"27有效客户数量":43},{"姓名":"张蓓蕾","职级":"0","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":7,"27客户数量":11,"27有效客户数量":11},{"姓名":"张佳丽","职级":"3","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":2,"27客户数量":32,"27有效客户数量":32},{"姓名":"林弋莘（Mikasa）","职级":"4","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":72,"27有效客户数量":72},{"姓名":"吕晨雨","职级":"2","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":7,"27客户数量":49,"27有效客户数量":49},{"姓名":"闻嘉慧","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":9,"27客户数量":22,"27有效客户数量":22},{"姓名":"梁佳欣","职级":"2","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":9,"27客户数量":48,"27有效客户数量":47},{"姓名":"韩旭 Ayla","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":8,"27客户数量":59,"27有效客户数量":59},{"姓名":"郭琳萱","职级":"2","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":20,"27客户数量":74,"27有效客户数量":73},{"姓名":"王雅楠","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":10,"27客户数量":10,"27有效客户数量":10},{"姓名":"徐雅轩","职级":"0","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":9,"27有效客户数量":9},{"姓名":"王希文","职级":"0","岗位":"留学文书导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":10,"27客户数量":20,"27有效客户数量":20},{"姓名":"李乔乔","职级":"4","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":45,"27有效客户数量":45},{"姓名":"赵辰欣","职级":"0","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":5,"27有效客户数量":5},{"姓名":"谢颖","职级":"4","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":5,"27客户数量":18,"27有效客户数量":18},{"姓名":"史义梅","职级":"4","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":4,"27客户数量":104,"27有效客户数量":101},{"姓名":"李丽娟 (Bery)","职级":"5","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":48,"27有效客户数量":48},{"姓名":"李王琳","职级":"2","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":1,"本月新增客户数":9,"27客户数量":63,"27有效客户数量":60},{"姓名":"李心怡Rosa","职级":"3","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":62,"27有效客户数量":59},{"姓名":"朱钰茜","职级":"3","岗位":"留学申请导师","部门":"交付三部","本周新增客户数":1,"本月新增客户数":7,"27客户数量":32,"27有效客户数量":32},{"姓名":"蒋沁","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":1,"本月新增客户数":6,"27客户数量":56,"27有效客户数量":56},{"姓名":"石晓坤","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"胡鑫垚","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张秋华","职级":"2","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":0,"本月新增客户数":13,"27客户数量":72,"27有效客户数量":72},{"姓名":"何玉叶","职级":"1","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"孙诚 Ernest","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"刘文丽","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"居昕","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"谢安娜","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"高雨萱","职级":"3","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":0,"本月新增客户数":6,"27客户数量":57,"27有效客户数量":57},{"姓名":"丁炜杰","职级":"1","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":5,"27客户数量":21,"27有效客户数量":21},{"姓名":"王皖苏","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"孙静","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"白金鹭（小白）","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"乔开妍（6.24-6.26假)","职级":"0","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"滕雨钊","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"李思冉（6.19-24休）","职级":"3","岗位":"留学文书导师","部门":"交付七部","本周新增客户数":0,"本月新增客户数":13,"27客户数量":76,"27有效客户数量":76},{"姓名":"于陈龙（Brando）","职级":"3","岗位":"留学申请导师","部门":"交付七部","本周新增客户数":0,"本月新增客户数":4,"27客户数量":52,"27有效客户数量":52},{"姓名":"杨文静","职级":"3","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":5,"27客户数量":49,"27有效客户数量":48},{"姓名":"夏新芳","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":5,"27客户数量":17,"27有效客户数量":17},{"姓名":"何香颐","职级":"1","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":6,"27有效客户数量":6},{"姓名":"初晓旭","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"李仕奇","职级":"0","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"李馨馨","职级":"2","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张姝颖","职级":"3","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":7,"27客户数量":56,"27有效客户数量":56},{"姓名":"蒋斐Eva","职级":"5","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":5,"27客户数量":35,"27有效客户数量":34},{"姓名":"杨清","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"闻静","职级":"3","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":4,"27客户数量":42,"27有效客户数量":41},{"姓名":"陈希 Cecilia","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"黄丽玲","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"张嘉荟","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"孙荣芝","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"崔欣彤","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"刘欣睿","职级":"0","岗位":"留学文书导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"夏艺","职级":"3","岗位":"留学申请导师","部门":"交付六部","本周新增客户数":0,"本月新增客户数":2,"27客户数量":37,"27有效客户数量":36},{"姓名":"张心怡（26假","职级":"0","岗位":"留学文书导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":1,"27客户数量":1,"27有效客户数量":1},{"姓名":"朱丽瑾","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"顾颖","职级":"2","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":0,"本月新增客户数":10,"27客户数量":35,"27有效客户数量":35},{"姓名":"李芯宇","职级":"1","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"王安琪","职级":"3","岗位":"留学申请导师","部门":"交付二部","本周新增客户数":0,"本月新增客户数":9,"27客户数量":50,"27有效客户数量":50},{"姓名":"苏欣 Audrey（产假中6.25-12.20）","职级":"3","岗位":"留学申请导师","部门":"交付一部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"邓小梅","职级":"0","岗位":"留学文书导师","部门":"交付三部","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0},{"姓名":"苏劲宇Grey","职级":"0","岗位":"留学申请导师","部门":"未分配部门","本周新增客户数":0,"本月新增客户数":0,"27客户数量":0,"27有效客户数量":0}]</script>
+</body>
+</html>
