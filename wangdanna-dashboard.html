@@ -424,8 +424,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Sort headers
     document.querySelectorAll('#tab-contents th[data-sort]').forEach(function(th) {
-      th.addEventListener('click', function() {
-        handleSort(tabId, this.getAttribute('data-sort'));
+      th.addEventListener('click', function(e) {
+        handleSort(tabId, this.getAttribute('data-sort'), e);
       });
     });
     // Pagination
@@ -457,14 +457,24 @@ document.addEventListener('DOMContentLoaded', function() {
       data = data.filter(function(r) { return r.部门 === deptVal; });
     }
 
-    if (sortState[tabId]) {
-      var col = sortState[tabId].col;
-      var dir = sortState[tabId].dir;
+    if (sortState[tabId] && sortState[tabId].length > 0) {
+      var sorts = sortState[tabId];
       data.sort(function(a, b) {
-        var va = a[col], vb = b[col];
-        if (typeof va === 'number' && typeof vb === 'number') return dir === 'asc' ? va - vb : vb - va;
-        va = String(va||''); vb = String(vb||'');
-        return dir === 'asc' ? va.localeCompare(vb, 'zh') : vb.localeCompare(va, 'zh');
+        for (var i = 0; i < sorts.length; i++) {
+          var col = sorts[i].col;
+          var dir = sorts[i].dir;
+          var va = a[col], vb = b[col];
+          var cmp = 0;
+          if (typeof va === 'number' && typeof vb === 'number') {
+            cmp = va - vb;
+          } else {
+            va = String(va || ''); vb = String(vb || '');
+            cmp = va.localeCompare(vb, 'zh');
+          }
+          if (dir === 'desc') cmp = -cmp;
+          if (cmp !== 0) return cmp;
+        }
+        return 0;
       });
     }
     return data;
@@ -486,8 +496,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var thHtml = '';
     cols.forEach(function(c, i) {
       var icon = '⇅';
-      if (sortState[tabId] && sortState[tabId].col === c) {
-        icon = sortState[tabId].dir === 'asc' ? '↑' : '↓';
+      var hasMulti = sortState[tabId] && sortState[tabId].length > 1;
+      if (sortState[tabId]) {
+        for (var si = 0; si < sortState[tabId].length; si++) {
+          if (sortState[tabId][si].col === c) {
+            var arrow = sortState[tabId][si].dir === 'asc' ? '↑' : '↓';
+            icon = hasMulti ? (si + 1) + '.' + arrow : arrow;
+            break;
+          }
+        }
       }
       thHtml += '<th data-sort="' + c + '">' + colLabels[i] + '<span class="sort-icon">' + icon + '</span></th>';
     });
@@ -547,11 +564,28 @@ document.addEventListener('DOMContentLoaded', function() {
     refreshTable(tabId);
   };
 
-  window.handleSort = function(tabId, col) {
-    if (!sortState[tabId] || sortState[tabId].col !== col) {
-      sortState[tabId] = { col: col, dir: 'asc' };
+  window.handleSort = function(tabId, col, event) {
+    var sorts = sortState[tabId] || [];
+    var existing = -1;
+    for (var i = 0; i < sorts.length; i++) {
+      if (sorts[i].col === col) { existing = i; break; }
+    }
+    if (event && event.shiftKey) {
+      // Shift+点击：多维度排序（追加或切换）
+      if (existing >= 0) {
+        sorts[existing].dir = sorts[existing].dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sorts.push({ col: col, dir: 'asc', priority: sorts.length + 1 });
+      }
+      sortState[tabId] = sorts;
     } else {
-      sortState[tabId].dir = sortState[tabId].dir === 'asc' ? 'desc' : 'asc';
+      // 普通点击：单维度排序（重置）
+      if (existing >= 0 && sorts.length === 1) {
+        sorts[0].dir = sorts[0].dir === 'asc' ? 'desc' : 'asc';
+        sortState[tabId] = sorts;
+      } else {
+        sortState[tabId] = [{ col: col, dir: 'asc', priority: 1 }];
+      }
     }
     currentPage[tabId] = 1;
     refreshTable(tabId);
