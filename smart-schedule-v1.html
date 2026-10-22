@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能排期1.0 · 问卷结论梳理与规则设计</title>
+<style>
+  :root{
+    --ink:#1f2329; --sub:#646a73; --line:#e5e6eb; --bg:#f7f8fa;
+    --blue:#2f66ff; --blue-bg:#eef3ff; --green:#00a854; --green-bg:#e8f7ef;
+    --orange:#ff7d00; --orange-bg:#fff3e6; --red:#f54a45; --red-bg:#feeceb;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif; color:var(--ink); background:var(--bg); line-height:1.7; padding:32px 16px;}
+  .wrap{max-width:960px; margin:0 auto;}
+  h1{font-size:26px; margin-bottom:6px;}
+  .meta{color:var(--sub); font-size:13px; margin-bottom:24px;}
+  h2{font-size:20px; margin:36px 0 12px; padding-left:10px; border-left:4px solid var(--blue);}
+  h3{font-size:16px; margin:20px 0 8px;}
+  .card{background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px 24px; margin-bottom:16px;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; margin:10px 0;}
+  th{background:#f2f3f5; text-align:left; padding:8px 10px; border:1px solid var(--line); white-space:nowrap;}
+  td{padding:8px 10px; border:1px solid var(--line); vertical-align:top;}
+  .tag{display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; margin-right:4px; white-space:nowrap;}
+  .t-blue{background:var(--blue-bg); color:var(--blue);}
+  .t-green{background:var(--green-bg); color:var(--green);}
+  .t-orange{background:var(--orange-bg); color:var(--orange);}
+  .t-red{background:var(--red-bg); color:var(--red);}
+  .num{font-weight:700;}
+  .bar{height:8px; background:#f2f3f5; border-radius:4px; overflow:hidden; margin-top:3px;}
+  .bar i{display:block; height:100%; border-radius:4px;}
+  .note{font-size:13px; color:var(--sub); margin-top:6px;}
+  .warn{background:var(--orange-bg); border-left:4px solid var(--orange); padding:10px 14px; border-radius:0 6px 6px 0; font-size:13.5px; margin:10px 0;}
+  .key{background:var(--blue-bg); border-left:4px solid var(--blue); padding:10px 14px; border-radius:0 6px 6px 0; font-size:13.5px; margin:10px 0;}
+  ul{padding-left:20px;}
+  li{margin:4px 0;}
+  .q{color:var(--sub); font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>智能排期1.0 · 问卷结论梳理与规则设计</h1>
+<div class="meta">数据源：《申请排期注意事项.xlsx》33 份有效答卷 + 8 条开放式补充留言 ｜ 问卷：智能排期规则·问卷题本（6题）｜ 梳理日期：2026-10-22</div>
+
+<!-- ================= 第一部分 ================= -->
+<h2>一、智能排期 1.0</h2>
+
+<div class="card">
+<h3>1.1 「什么条件下能发起网申」—— 发起门禁（四条件判定）</h3>
+<p class="note">对应问卷 Q1 / Q2 / Q3 + 补充留言。问卷揭示了一个关键事实：<b>三个"模糊条件"的共识度差异极大</b>，规则设计按共识度从强到弱落地。</p>
+
+<table>
+<tr><th style="width:110px">条件</th><th style="width:190px">问卷结论（分布）</th><th>1.0 建议规则</th><th style="width:230px">边界与差异化（来自Q6留言）</th></tr>
+<tr>
+  <td><b>① 文书定稿</b><br><span class="q">Q1：只差文书未定稿，可否排？</span></td>
+  <td><span class="tag t-orange">先不排 18票 / 54.5%</span><br><span class="tag t-blue">可以排 15票 / 45.5%</span>
+    <div class="bar"><i style="width:54.5%;background:var(--orange)"></i></div>
+    <div class="bar"><i style="width:45.5%;background:var(--blue)"></i></div></td>
+  <td><b>默认不排，等定稿。</b>意见接近五五开，取保守口径；把"边排边催"留作 2.0 差异化能力。</td>
+  <td>留言提出按学生类型差异化：CV/RL <b>零修改、光速定稿型</b>学生 PS 大概率秒定，可放宽；<b>"文书反复修改"标签</b>学生严格不排。→ 建议作为 2.0 标签规则，1.0 先统一。</td>
+</tr>
+<tr>
+  <td><b>② 语言达标</b><br><span class="q">Q2：已报名11-05雅思、暂无成绩，怎么算？</span></td>
+  <td><span class="tag t-red">未达标不满足 25票 / 75.8%</span><br><span class="tag t-blue">已报名算"在路上" 8票 / 24.2%</span>
+    <div class="bar"><i style="width:75.8%;background:var(--red)"></i></div>
+    <div class="bar"><i style="width:24.2%;background:var(--blue)"></i></div></td>
+  <td><b>强共识：未达标即不满足，不排。</b>"已报名"只是"在路上"，1.0 不计入达标。</td>
+  <td>① 按地区差异化：<b>英澳可先交再补语言班</b>（港校没语言没法交）；② 学生四级/六级能佐证水平的可人工豁免；③ 留言提醒"考雅思≠考得出"（年初考到年末、解约案例），不排是安全的。</td>
+</tr>
+<tr>
+  <td><b>③ 核心材料齐全</b><br><span class="q">Q3：只差一份在读证明，可否算满足？</span></td>
+  <td><span class="tag t-green">不影响发起，先排 23票 / 69.7%</span><br><span class="tag t-red">材料未齐全不算 10票 / 30.3%</span>
+    <div class="bar"><i style="width:69.7%;background:var(--green)"></i></div>
+    <div class="bar"><i style="width:30.3%;background:var(--red)"></i></div></td>
+  <td><b>材料分级：关键材料缺失不排，非关键缺失可先排。</b>表面 7 成愿意先排，但开放留言反转了口径（见下方警示）。</td>
+  <td>留言明确：<b>在读证明是关键材料</b>——上面有入学时间/预计毕业时间，直接影响 CV 和网申填写，先填后补会导致返工重填。<br>材料齐全后可由智能助手<b>自动发起群提醒</b>学生补件。</td>
+</tr>
+<tr>
+  <td><b>④ 项目开放</b><br><span class="q">Q6 多条留言</span></td>
+  <td colspan="3"><b>硬条件：项目开放后才允许排期。</b>留言痛点：学校开放时间不固定——<br>① 晚开放（如港大文学院）：群里不停弹提醒，很困扰 → 已排期的项目延期开放时，系统应<b>自动顺延并静默处理</b>，减少无效提醒；<br>② 提前开放（如南洋理工）：被放在11月，10月根本没排上、全靠客户自己看见 → 开放提前时系统需<b>自动前移并推送提醒</b>；<br>③ 可增加"<b>项目开放提醒</b>"推给学生，避免想不起来看。</td>
+</tr>
+</table>
+
+<div class="warn">⚠️ <b>口径矛盾提示（Q3）</b>：选择题 69.7% 选"缺在读证明不影响发起"，但开放式留言中两位老师明确反对——"雅思、在读证明都是关键材料，不能缺失""先填申请后补材料，之后还得重新修改，浪费时间"。选择题容易被"尽量别卡住"的惯性带偏，<b>规则设计应以材料分级方案落地</b>：关键材料清单（在读证明、成绩单、语言等）缺失即拦截，非关键材料（如文书外附件）缺失可先排并挂待办。</div>
+
+<div class="key"><b>1.0 发起门禁总结（一句话）</b>：文书全部定稿 + 语言达标（不含已报名未出分）+ 关键材料齐全 + 项目已开放，四项全满足才进入排期池；任一不满足 → 任务留在"待条件池"，条件满足后自动入池。</div>
+</div>
+
+<div class="card">
+<h3>1.2 「都满足条件时谁先做」—— 优先级排序</h3>
+<p class="note">对应问卷 Q4（四选二排序）+ Q5（成功率信息是否改变排序）。</p>
+
+<table>
+<tr><th style="width:250px">Q4 选项（33人多选）</th><th style="width:80px">得票</th><th style="width:200px">得票率</th><th>解读</th></tr>
+<tr><td>港科 · 保底｜距截止12天，<b>客户存在预警or客诉</b></td><td class="num">27</td><td>81.8%</td><td><b>风险因素排第一</b>：预警/客诉客户必须优先处理，共识最强</td></tr>
+<tr><td>南洋理工 · 冲刺｜<b>距截止5天，今天刚满足条件</b></td><td class="num">26</td><td>78.8%</td><td><b>截止紧急度排第二</b>：DDL 临近且刚达标的任务刻不容缓</td></tr>
+<tr><td>港大 · 梦校｜距截止40天，<b>条件满足已经10天</b></td><td class="num">12</td><td>36.4%</td><td>"等待时长/饥饿度"仅作次级参考</td></tr>
+<tr><td>港城 · 正常｜距截止20天，<b>另有3个任务已被排期</b></td><td class="num">1</td><td>3.0%</td><td>"该客户任务多"几乎不构成优先理由</td></tr>
+</table>
+
+<table>
+<tr><th style="width:250px">Q5：告知南洋理工近7日自动网申成功率仅15.7%（全校最低）后，排序会变吗？</th><th style="width:80px">票数</th><th>解读</th></tr>
+<tr><td>不改，截止日还是第一考虑要素</td><td class="num">24（72.7%）</td><td>成功率先放一边，DDL 才是硬道理</td></tr>
+<tr><td>不一定，看能不能人工填写都低</td><td class="num">6（18.2%）</td><td>希望系统能人工降权兜底，而不是直接踢出</td></tr>
+<tr><td>会改，成功率这么低先别排</td><td class="num">3（9.1%）</td><td>少数派；成功率不进入 1.0 排序因子</td></tr>
+</table>
+
+<div class="key"><b>1.0 排序因子（按权重落地）</b>：<br>
+P1 <b>截止日临近度</b>（轮次 DDL 距今天数，核心因子）<br>
+P2 <b>客户风险</b>（预警/客诉客户置顶）<br>
+P3 <b>饥饿度</b>（条件满足后等待时长，次级参考）<br>
+P4 <b>成功率</b> —— 1.0 不作为排序因子，仅在任务卡上做提示标签（"该校近期自动网申成功率 15.7%"），避免自动踢出。<br>
+<b>排除项</b>（不进入排期池，Q6留言）：已拿梦校 offer 剩余申请待定、学生明确放弃某项目、已填好只差缴费。</div>
+</div>
+
+<!-- ================= 第二部分 ================= -->
+<h2>二、系统调整完排期，自动带入调整理由</h2>
+<div class="card">
+<p>需求来源：Q6 留言 #33——"不满足申请条件的申请，能自动调整排期，不要再让我手动调整"；以及"材料标注不可用，自动群里提醒学生"。系统每次自动调整排期时，须<b>同步写入结构化调整理由</b>，让售后老师不用追问"为什么被挪走了"。</p>
+
+<h3>2.1 自动调整场景 → 调整理由枚举</h3>
+<table>
+<tr><th style="width:130px">理由分类</th><th style="width:250px">触发事件</th><th>调整动作 + 自动带入的理由文案（示例）</th></tr>
+<tr><td rowspan="4"><span class="tag t-red">条件失效</span></td>
+  <td>文书定稿被撤销/重新修改</td><td>"文书定稿状态被撤销，自动移出排期池，待重新定稿后恢复"</td></tr>
+<tr><td>语言出分未达标</td><td>"雅思/托福成绩未达项目要求，自动顺延至下一轮"</td></tr>
+<tr><td>关键材料被退回/标注不可用</td><td>"在读证明标注不可用，已移出排期 + 已自动在群内提醒学生补件"</td></tr>
+<tr><td>项目延期开放/关闭</td><td>"港大文学院延期开放，排期自动顺延至开放日；南洋理工提前开放，已前移并推送提醒"</td></tr>
+<tr><td rowspan="3"><span class="tag t-orange">客户侧</span></td>
+  <td>客户临时调整申请安排（如某校赶下一轮）</td><td>"客户要求XX项目赶下一轮，排期已前移至XX日"</td></tr>
+<tr><td>学生变卦只递交冲刺/保底</td><td>"学生暂缓递交保底项目，已移出本轮"</td></tr>
+<tr><td>学生确认网申信息极慢（海本时差/考研）</td><td>"学生确认周期长，建议排期预留N天缓冲"</td></tr>
+<tr><td rowspan="2"><span class="tag t-green">状态完成</span></td>
+  <td>已填好只差缴费</td><td>"网申填写完成，待学生缴费，单独打【待缴费】标签"（Q6：填写与提交不同天，目前缺标志辨别）</td></tr>
+<tr><td>已拿梦校 offer</td><td>"已获梦校offer，剩余申请暂缓排期"</td></tr>
+</table>
+
+<h3>2.2 调整理由的三要素</h3>
+<ul>
+<li><b>结构化</b>：理由必须是枚举值（上表），不允许自由文本——与变更原因下拉枚举方案同一套思路，便于后续归因统计；</li>
+<li><b>可追溯</b>：每条自动调整记录 = 调整时间 + 触发规则 + 原日期 + 新日期 + <b>恢复条件</b>（"满足XX后自动恢复排期"）；</li>
+<li><b>可感知</b>：调整后在话题群/任务卡同步可见，DDL 前遗漏提醒联动（#33："希望在 DDL 前提醒我，还有哪些学生没有交申请"）。</li>
+</ul>
+</div>
+
+<!-- ================= 第三部分 ================= -->
+<h2>三、自定义需要调整排期的（可配置项）</h2>
+<div class="card">
+<p>问卷中"是否启用/怎么调"分歧最大的点（Q1 近五五开、Q5 有 18.2% 要人工兜底、#1 留言"能自己选择要不要智能排期吗，计划赶不上变化"），决定了 1.0 必须留足人工自定义空间：</p>
+
+<table>
+<tr><th style="width:150px">配置模块</th><th>可配置内容</th><th style="width:250px">问卷依据</th></tr>
+<tr><td><b>规则开关</b></td>
+  <td>① 按老师/按客户粒度开启或关闭智能排期；② 语言"已报名算在路上"口径开关（默认关）；③ 排序因子权重（截止日/风险/饥饿度）</td>
+  <td>Q1 五五开；Q5 18.2% 人工兜底；#1 留言</td></tr>
+<tr><td><b>条件豁免</b></td>
+  <td>① 地区差异化：英澳项目允许"语言在路上"先排（有语言班）；② 学生标签差异化："光速定稿型"放宽文书条件、"文书反复修改型"收紧；③ 非关键材料缺失先排</td>
+  <td>#17 留言（地区+标签差异化）；Q3 材料分级</td></tr>
+<tr><td><b>人工兜底</b></td>
+  <td>① 智能建议允许"采纳 / 修改后采纳 / 拒绝"三种操作，拒绝需选枚举原因；② 人工可把任务降权或置顶</td>
+  <td>Q5 "看能不能人工填写都低"</td></tr>
+<tr><td><b>排除名单</b></td>
+  <td>手动标记：学生放弃某项目 / 已拿offer暂缓 / 已填待缴费 / 学生明确不想申请某校</td>
+  <td>Q6 #31、#22、#38 留言</td></tr>
+<tr><td><b>提醒策略</b></td>
+  <td>① 提醒频率与渠道可调（企业微信反复提醒会引发学生/家长焦虑，#18 留言）；② DDL 前提醒阈值（提前N天）；③ 项目开放提醒推送对象（老师/学生）可勾选</td>
+  <td>Q6 #18、#5、#33 留言</td></tr>
+<tr><td><b>视图操作</b></td>
+  <td>大数据量（50+、100+）下的批量拖拽与智能检索：在指定日期直接检索学生名 → 勾选数据 → 移动</td>
+  <td>Q6 #32、#43 留言</td></tr>
+</table>
+</div>
+
+<!-- ================= 第四部分 ================= -->
+<h2>四、埋点设计</h2>
+<div class="card">
+<p>埋点目标：① 验证 1.0 四条件门禁和排序规则是否有效；② 为 2.0 差异化（标签、地区）提供数据；③ 量化"每周排期 0.5~1 小时"的提效幅度（#33 留言基线）。</p>
+
+<table>
+<tr><th style="width:120px">埋点域</th><th style="width:230px">事件</th><th>关键字段</th><th style="width:230px">用途</th></tr>
+<tr><td rowspan="3"><b>排期生成</b></td>
+  <td>smart_schedule_created</td><td>建议任务数、命中条件明细（四条件各自状态）、生成方式（智能/人工）</td><td>统计四条件拦截分布，验证门禁合理性</td></tr>
+<tr><td>smart_schedule_action</td><td>操作类型（采纳/修改后采纳/拒绝）、拒绝原因（枚举）、操作人、耗时</td><td><b>采纳率是 1.0 北极星指标</b>；拒绝原因直接指向规则迭代方向</td></tr>
+<tr><td>schedule_manual_edit</td><td>修改前后日期、修改理由（枚举）</td><td>量化智能建议与人工意图的偏差</td></tr>
+<tr><td rowspan="2"><b>条件门禁</b></td>
+  <td>gate_blocked</td><td>拦截条件类型（文书/语言/材料/项目开放）、材料细分类型、客户、项目</td><td>#33 说"大部分工作是筛选不满足条件的"→ 拦截TOP类型决定自动调整优先做哪个</td></tr>
+<tr><td>gate_recovered</td><td>拦截→恢复的时长、恢复触发方式（自动/人工）</td><td>衡量"待条件池"周转效率</td></tr>
+<tr><td rowspan="2"><b>自动调整</b></td>
+  <td>auto_adjust_applied</td><td>调整理由枚举、原日期、新日期、是否群内自动提醒</td><td>验证"调整理由自动带入"的覆盖率和理由分布</td></tr>
+<tr><td>auto_adjust_revert</td><td>自动调整后被人工改回的次数、原因</td><td>调整正确率；被改回率高=规则误判</td></tr>
+<tr><td rowspan="2"><b>执行结果</b></td>
+  <td>submit_gap</td><td>计划递交日 vs 实际填写日 vs 实际提交日</td><td>Q6 #38：填写与提交不同天、目前无标志 → 建立偏差分布，支撑"填写/提交分离"的标签设计</td></tr>
+<tr><td>ddl_miss_alert</td><td>DDL前提醒发送数、命中数（真遗漏）、误报数</td><td>评估提醒准确性（防打扰，#18 留言）</td></tr>
+<tr><td rowspan="2"><b>效率收益</b></td>
+  <td>ops_time_spent</td><td>每次排期操作时长（上线前基线 0.5~1h/周）</td><td>量化智能排期提效幅度，闭环汇报</td></tr>
+<tr><td>custom_config_changed</td><td>配置项、变更前后值、操作人</td><td>观察自定义功能使用率，决定 2.0 做深还是收敛</td></tr>
+</table>
+
+<div class="key"><b>埋点优先级建议</b>：首批只埋 3 个——<b>采纳率</b>（smart_schedule_action）、<b>拦截分布</b>（gate_blocked）、<b>自动调整被改回率</b>（auto_adjust_revert）。这三个直接回答"1.0 规则对不对、要不要按问卷分歧做差异化"。</div>
+</div>
+
+<p class="note" style="margin-top:24px">附：问卷题目 → 本文档章节映射：Q1/Q2/Q3(+留言) → 1.1 发起门禁；Q4/Q5 → 1.2 排序；Q6 留言 → 1.1边界、二、三、四章节。</p>
+</div>
+</body>
+</html>
