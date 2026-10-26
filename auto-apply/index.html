@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自动网申周度看板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #F7F7F5; color: #2C2C2A; line-height: 1.6; padding: 24px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+header { margin-bottom: 20px; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.sub { font-size: 13px; color: #5F5E5A; }
+.sub b { font-weight: 600; color: #2C2C2A; }
+.cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 20px 0; }
+.card { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 10px; padding: 14px 16px; }
+.card .lb { font-size: 12px; color: #5F5E5A; margin-bottom: 4px; }
+.card .vl { font-size: 25px; font-weight: 600; line-height: 1.2; }
+.card .ex { font-size: 11px; color: #888780; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+section { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.note { font-size: 12px; color: #888780; margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: #5F5E5A; padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.12); font-size: 12px; }
+td { padding: 8px 10px; border-bottom: 0.5px solid rgba(0,0,0,0.06); }
+tr:last-child td { border-bottom: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bad { color: #A32D2D; font-weight: 600; }
+.warn { color: #854F0B; font-weight: 600; }
+.ok { color: #0F6E56; font-weight: 600; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 4px; background: #F1EFE8; color: #5F5E5A; }
+.tag-r { background: #FCEBEB; color: #A32D2D; }
+.tag-g { background: #E1F5EE; color: #0F6E56; }
+.chartbox { position: relative; width: 100%; }
+.alert { background: #FAEEDA; border: 0.5px solid #EF9F27; border-radius: 8px; padding: 14px 16px; font-size: 13px; margin-bottom: 16px; }
+.alert h3 { font-size: 13px; font-weight: 600; color: #854F0B; margin-bottom: 6px; }
+.alert ul { margin: 6px 0 0 18px; font-size: 12.5px; color: #633806; }
+.alert li { margin-bottom: 3px; }
+.ins { background: #E6F1FB; border: 0.5px solid #378ADD; border-radius: 8px; padding: 14px 16px; font-size: 13px; }
+.ins h3 { font-size: 13px; font-weight: 600; color: #185FA5; margin-bottom: 6px; }
+.ins ul { margin: 6px 0 0 18px; font-size: 12.5px; color: #0C447C; }
+.ins li { margin-bottom: 5px; }
+footer { font-size: 12px; color: #888780; text-align: center; margin-top: 24px; }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } .grid2 { grid-template-columns: 1fr; } .mrow { grid-template-columns: 1fr !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>自动网申看板</h1>
+  <div class="sub">
+    统计周期 <b id="wk"></b> ｜ 本页分两块独立数据：<b>① 周维度执行结果</b>（执行结果2，自动网申明细 1066 条，含成功/失败与失败原因）｜ <b>② 月维度使用率</b>（执行结果4，按院校 自动/手动 汇总）
+  </div>
+</header>
+
+<div class="cards" id="cards"></div>
+
+<div class="alert">
+  <h3>⚠️ 两块数据口径不同，请勿相加或直接对比</h3>
+  <ul>
+    <li><b>周维度（明细表）：</b>本周 10.19–10.25 的自动网申执行记录共 <b>1066</b> 条，只反映"这一周机器跑得怎么样"。</li>
+    <li><b>月维度（汇总表）：</b>按院校统计的自动/手动操作次数，是<b>整月累计</b>口径，合计 5809 条，与单周量级不可比。</li>
+    <li><b>月维度自动占比 &gt; 100% 属正常现象：</b>分母为"申请单数"，分子为"自动操作次数"，同一申请失败后转手动会被重复计入操作次数（如香港城市 437/417 = 104.8%）。该列仅用于看自动化渗透趋势，不代表覆盖率。</li>
+  </ul>
+</div>
+
+<section>
+  <h2>① 周维度：本周自动网申量与失败率</h2>
+  <div class="note">统计周期 10.19–10.25。柱形为本周自动网申量（完成/失败堆叠），折线为失败率。此表仅含周度明细口径。</div>
+  <div class="chartbox" style="height:340px;"><canvas id="cUniv" role="img" aria-label="各院校本周自动网申量与失败率双轴图"></canvas></div>
+  <table style="margin-top:16px;">
+    <thead><tr><th>院校</th><th class="num">本周自动量</th><th class="num">完成</th><th class="num">失败</th><th class="num">失败率</th><th class="num">占本周失败比重</th></tr></thead>
+    <tbody id="tUniv"></tbody>
+  </table>
+</section>
+
+<section>
+  <h2>② 月维度：自动 / 手动 使用率</h2>
+  <div class="note">数据源：执行结果4，按院校汇总的<b>月维度</b>自动与手动操作次数。<b>与上方周维度数据口径不同，请勿相加或直接对比。</b></div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;margin:10px 0 16px;">
+    <div><div style="font-size:12px;color:#5F5E5A;">月维度整体自动占比</div><div style="font-size:26px;font-weight:600;color:#185FA5;">64.1%</div><div style="font-size:11px;color:#888780;">3725 / 5809 自动操作</div></div>
+    <div><div style="font-size:12px;color:#5F5E5A;">自动操作总数</div><div style="font-size:26px;font-weight:600;">3725</div><div style="font-size:11px;color:#888780;">vs 手动 3511</div></div>
+    <div><div style="font-size:12px;color:#5F5E5A;">自动化占比最高院校</div><div style="font-size:26px;font-weight:600;color:#0F6E56;">85.2%</div><div style="font-size:11px;color:#888780;">新加坡国立大学</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="mrow">
+    <div class="chartbox" style="height:300px;"><canvas id="cMonth" role="img" aria-label="各院校月维度自动占比横向柱状图"></canvas></div>
+    <table>
+      <thead><tr><th>院校</th><th class="num">自动</th><th class="num">手动</th><th class="num">自动占比</th></tr></thead>
+      <tbody id="tMonth"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="grid2">
+  <section>
+    <h2>失败原因构成</h2>
+    <div class="note">基于 300 条失败记录的 apply_auto_error_msg 归类</div>
+    <div class="chartbox" style="height:320px;"><canvas id="cReason" role="img" aria-label="失败原因分类横向柱状图"></canvas></div>
+  </section>
+  <section>
+    <h2>各交付部失败率</h2>
+    <div class="note">部门间差异仅 25.5%–30.7%，说明失败是系统性技术问题，而非部门执行问题</div>
+    <div class="chartbox" style="height:320px;"><canvas id="cDept" role="img" aria-label="各交付部失败率柱状图"></canvas></div>
+  </section>
+</div>
+
+<div class="grid2">
+  <section>
+    <h2>按日走势</h2>
+    <div class="note">周末量小但失败率飙升（10.24 为 46.9%，10.25 达 64.3%），需排查周末无人值守/重试机制</div>
+    <div class="chartbox" style="height:300px;"><canvas id="cDay" role="img" aria-label="按日自动网申量与失败率"></canvas></div>
+  </section>
+  <section>
+    <h2>失败量 TOP 售后（量≥5）</h2>
+    <div class="note">用于定位需要重点辅导的对象；失败率高但量小的个案需结合具体院校判断</div>
+    <table>
+      <thead><tr><th>售后</th><th>部门</th><th class="num">自动量</th><th class="num">失败</th><th class="num">失败率</th></tr></thead>
+      <tbody id="tSales"></tbody>
+    </table>
+  </section>
+</div>
+
+<div class="ins">
+  <h3>本周结论与建议</h3>
+  <ul>
+    <li><b>整体成功率 71.6%（763/1066），失败率 28.1%</b> —— 每 4 次自动网申约 1 次失败，是影响交付效率的主要损耗点。</li>
+    <li><b>失败主因高度集中：系统超时 98 条（32.7%）+ 必填字段为空/校验不通过 91 条（30.3%），合计 63%。</b>前者偏技术（任务超时、页面回发超时），后者偏数据质量（工作经历、教育经历、电话等字段缺失）——应拆给两个团队分别认领。</li>
+    <li><b>南洋理工（失败率 72.5%）与港中文深圳（78.6%）是重灾区。</b>南洋本周 51 次自动仅成功 14 次，而其月维度自动占比本就只有 22.7%——建议先暂停或降低这两所院校的自动化优先级，转人工兜底，避免反复失败消耗学生申请窗口。</li>
+    <li><b>香港大学失败绝对量最大（98 条，占全部失败 32.7%）</b>，虽失败率 36.6% 中等，但因其体量最大，单点优化收益最高，应作为技术攻坚第一优先。</li>
+    <li><b>周末失败率异常（10.25 达 64.3%）</b>，远超工作日的 22%–29%。建议核查周末是否缺少人工盯盘与失败重跑机制。</li>
+    <li><b>部门间失败率差异很小（25.5%–30.7%）</b>，明确指向系统/数据侧共性问题，不宜按部门追责。</li>
+  </ul>
+</div>
+
+<footer>数据更新于 <span id="upd"></span> ｜ 每周追加一周数据即可自动形成趋势对比</footer>
+
+</div>
+
+<script>
+const WEEKS = [
+  {
+    weekLabel: "10.19 - 10.25",
+    total: 1066, done: 763, fail: 300, start: 3,
+    successRate: 71.6, failRate: 28.1, penetration: 64.1,
+    sumTotal: 5809, sumAuto: 3725, sumManual: 3511,
+    univ: [
+      {name:"香港大学", auto_total:268, done:170, fail:98, fail_rate:36.6, total_apply:1795, auto_apply:1137, manual_apply:658},
+      {name:"香港理工大学", auto_total:248, done:206, fail:42, fail_rate:16.9, total_apply:1130, auto_apply:809, manual_apply:321},
+      {name:"香港城市大学", auto_total:155, done:130, fail:24, fail_rate:15.5, total_apply:417, auto_apply:437, manual_apply:316},
+      {name:"新加坡国立大学", auto_total:112, done:76, fail:36, fail_rate:32.1, total_apply:582, auto_apply:496, manual_apply:478},
+      {name:"香港科技大学", auto_total:110, done:85, fail:23, fail_rate:20.9, total_apply:439, auto_apply:360, manual_apply:79},
+      {name:"香港中文大学", auto_total:108, done:79, fail:29, fail_rate:26.9, total_apply:643, auto_apply:299, manual_apply:344},
+      {name:"南洋理工大学", auto_total:51, done:14, fail:37, fail_rate:72.5, total_apply:728, auto_apply:165, manual_apply:1235},
+      {name:"香港中文大学（深圳）", auto_total:14, done:3, fail:11, fail_rate:78.6, total_apply:75, auto_apply:22, manual_apply:80}
+    ],
+    dept: [
+      {name:"交付三部二组", total:205, fail:63, rate:30.7},
+      {name:"交付一部", total:282, fail:86, rate:30.5},
+      {name:"交付七部", total:139, fail:40, rate:28.8},
+      {name:"交付二部", total:325, fail:83, rate:25.5},
+      {name:"交付六部", total:110, fail:28, rate:25.5}
+    ],
+    day: [
+      {date:"2026-10-19", total:256, fail:70},
+      {date:"2026-10-20", total:272, fail:62},
+      {date:"2026-10-21", total:168, fail:48},
+      {date:"2026-10-22", total:179, fail:52},
+      {date:"2026-10-23", total:131, fail:35},
+      {date:"2026-10-24", total:32, fail:15},
+      {date:"2026-10-25", total:28, fail:18}
+    ],
+    failReasons: [
+      {name:"系统超时/任务未完成", v:98},
+      {name:"必填字段为空/校验不通过", v:91},
+      {name:"其他", v:35},
+      {name:"登录/账号问题", v:26},
+      {name:"材料/文件上传失败", v:25},
+      {name:"推荐人信息缺失", v:12},
+      {name:"学校信息未收录", v:10},
+      {name:"页面控件/元素定位失败", v:3}
+    ],
+    sales: [
+      {name:"刘伊铃", dept:"交付二部", total:19, fail:10, rate:52.6},
+      {name:"秦蕊荣", dept:"交付三部二组", total:31, fail:10, rate:32.3},
+      {name:"王子怡", dept:"交付三部二组", total:20, fail:9, rate:45.0},
+      {name:"甘菁", dept:"交付三部二组", total:13, fail:9, rate:69.2},
+      {name:"居昕", dept:"交付一部", total:16, fail:8, rate:50.0},
+      {name:"白婧", dept:"交付二部", total:21, fail:7, rate:33.3},
+      {name:"吴浩雯", dept:"交付一部", total:15, fail:7, rate:46.7},
+      {name:"李丽娟", dept:"交付三部二组", total:19, fail:7, rate:36.8},
+      {name:"于陈龙", dept:"交付七部", total:20, fail:7, rate:35.0},
+      {name:"胡方圆", dept:"交付七部", total:15, fail:6, rate:40.0},
+      {name:"王皖苏", dept:"交付六部", total:24, fail:6, rate:25.0},
+      {name:"吴江燕", dept:"交付三部二组", total:19, fail:6, rate:31.6}
+    ]
+  }
+];
+
+const W = WEEKS[WEEKS.length - 1];
+document.getElementById("wk").textContent = W.weekLabel;
+document.getElementById("upd").textContent = new Date().toLocaleDateString("zh-CN");
+
+const C = { done:"#1D9E75", fail:"#E24B4A", blue:"#378ADD", gray:"#888780",
+  purple:"#7F77DD", amber:"#EF9F27", coral:"#D85A30", teal:"#5DCAA5", pink:"#D4537E" };
+
+document.getElementById("cards").innerHTML = [
+  ["本周自动网申总量", W.total, "周维度 · 执行结果2 明细"],
+  ["网申完成", W.done, "application_status 含完成"],
+  ["网申失败", W.fail, "含失败原因记录"],
+  ["成功率", W.successRate + "%", "完成 / 总量"],
+  ["失败率", W.failRate + "%", "每 4 次约 1 次失败"]
+].map(([l,v,e],i) => `<div class="card"><div class="lb">${l}</div><div class="vl" style="color:${i===2||i===4?'#A32D2D':(i===1||i===3?'#0F6E56':'#2C2C2A')}">${v}</div><div class="ex">${e}</div></div>`).join("");
+
+new Chart(document.getElementById("cUniv"), {
+  data: {
+    labels: W.univ.map(u => u.name),
+    datasets: [
+      { type:"bar", label:"完成", data:W.univ.map(u=>u.done), backgroundColor:C.done, yAxisID:"y", stack:"s" },
+      { type:"bar", label:"失败", data:W.univ.map(u=>u.fail), backgroundColor:C.fail, yAxisID:"y", stack:"s" },
+      { type:"line", label:"失败率", data:W.univ.map(u=>u.fail_rate), borderColor:C.amber, backgroundColor:C.amber, borderWidth:2, pointRadius:4, yAxisID:"y1" }
+    ]
+  },
+  options: { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>c.dataset.type==="line"?"失败率 "+c.parsed.y+"%":c.dataset.label+" "+Math.round(c.parsed.y)+" 条" } } },
+    scales:{
+      x:{ stacked:true, ticks:{ autoSkip:false, maxRotation:30, font:{size:11} }, grid:{display:false} },
+      y:{ stacked:true, beginAtZero:true, title:{display:true,text:"条数",font:{size:11}}, ticks:{font:{size:11}} },
+      y1:{ position:"right", beginAtZero:true, max:100, grid:{display:false}, title:{display:true,text:"失败率 %",font:{size:11}}, ticks:{font:{size:11},callback:v=>v+"%"} }
+    }
+  }
+});
+
+document.getElementById("tUniv").innerHTML = W.univ.map(u => {
+  const cls = u.fail_rate>=50?"bad":(u.fail_rate>=30?"warn":"");
+  const share = (u.fail/W.fail*100).toFixed(1);
+  const scls = share>=20?"bad":"";
+  return `<tr><td>${u.name}</td><td class="num">${u.auto_total}</td><td class="num">${u.done}</td><td class="num">${u.fail}</td>
+    <td class="num ${cls}">${u.fail_rate}%</td><td class="num ${scls}">${share}%</td></tr>`;
+}).join("");
+
+// ---- 月维度：自动/手动使用率（独立口径）----
+document.getElementById("tMonth").innerHTML = W.univ.map(u => {
+  const p = u.auto_apply / u.total_apply * 100;
+  const cls = p > 100 ? "bad" : (p < 50 ? "warn" : "");
+  return `<tr><td>${u.name}</td><td class="num">${u.auto_apply}</td><td class="num">${u.manual_apply}</td><td class="num ${cls}">${p.toFixed(1)}%</td></tr>`;
+}).join("");
+
+const mSorted = [...W.univ].sort((a,b) => (a.auto_apply/a.total_apply) - (b.auto_apply/b.total_apply));
+new Chart(document.getElementById("cMonth"), {
+  type:"bar",
+  data:{
+    labels: mSorted.map(u=>u.name),
+    datasets:[{
+      data: mSorted.map(u=>+(u.auto_apply/u.total_apply*100).toFixed(1)),
+      backgroundColor: mSorted.map(u=>{
+        const p = u.auto_apply/u.total_apply*100;
+        return p>100 ? C.fail : (p<50 ? C.amber : C.done);
+      }),
+      borderWidth:0
+    }]
+  },
+  options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>"自动占比 "+c.parsed.x+"%（自动 "+mSorted[c.dataIndex].auto_apply+" / 申请 "+mSorted[c.dataIndex].total_apply+"）"}} },
+    scales:{ x:{ beginAtZero:true, max:110, ticks:{font:{size:11},callback:v=>v+"%"}, grid:{color:"rgba(0,0,0,0.06)"} },
+      y:{ ticks:{font:{size:11},autoSkip:false}, grid:{display:false} } } }
+});
+
+const RC = [C.fail, C.amber, C.gray, C.purple, C.coral, C.pink, C.teal, C.blue];
+new Chart(document.getElementById("cReason"), {
+  type:"bar",
+  data:{ labels:W.failReasons.map(r=>r.name), datasets:[{ data:W.failReasons.map(r=>r.v), backgroundColor:RC, borderWidth:0 }] },
+  options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>Math.round(c.parsed.x)+" 条 ("+(c.parsed.x/W.fail*100).toFixed(1)+"%)"}} },
+    scales:{ x:{ beginAtZero:true, ticks:{font:{size:11}} }, y:{ ticks:{font:{size:11},autoSkip:false}, grid:{display:false} } } }
+});
+
+new Chart(document.getElementById("cDept"), {
+  type:"bar",
+  data:{ labels:W.dept.map(d=>d.name), datasets:[{ data:W.dept.map(d=>d.rate), backgroundColor:C.blue, borderWidth:0 }] },
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>"失败率 "+c.parsed.y+"%（"+W.dept[c.dataIndex].fail+"/"+W.dept[c.dataIndex].total+"）"}} },
+    scales:{ x:{ ticks:{autoSkip:false,maxRotation:30,font:{size:11}}, grid:{display:false} },
+      y:{ beginAtZero:true, max:40, ticks:{font:{size:11},callback:v=>v+"%"} } } }
+});
+
+new Chart(document.getElementById("cDay"), {
+  data:{ labels:W.day.map(d=>d.date.slice(5)),
+    datasets:[
+      { type:"bar", label:"总量", data:W.day.map(d=>d.total), backgroundColor:C.blue, yAxisID:"y" },
+      { type:"line", label:"失败率", data:W.day.map(d=>+(d.fail/d.total*100).toFixed(1)), borderColor:C.fail, backgroundColor:C.fail, borderWidth:2, pointRadius:4, yAxisID:"y1" }
+    ]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>c.dataset.type==="line"?"失败率 "+c.parsed.y+"%":"总量 "+Math.round(c.parsed.y)+" 条"}} },
+    scales:{ x:{ ticks:{font:{size:11}}, grid:{display:false} },
+      y:{ beginAtZero:true, ticks:{font:{size:11}} },
+      y1:{ position:"right", beginAtZero:true, max:80, grid:{display:false}, ticks:{font:{size:11},callback:v=>v+"%"} } } }
+});
+
+document.getElementById("tSales").innerHTML = W.sales.map(s => {
+  const cls = s.rate>=50?"bad":(s.rate>=40?"warn":"");
+  return `<tr><td>${s.name}</td><td><span class="tag">${s.dept}</span></td><td class="num">${s.total}</td><td class="num">${s.fail}</td><td class="num ${cls}">${s.rate}%</td></tr>`;
+}).join("");
+</script>
+</body>
+</html>
